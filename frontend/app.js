@@ -24,27 +24,145 @@ function getApiUrl() {
     return CONFIG.API_BASE_URL;
 }
 
-// CORS-aware fetch function
-async function corsAwareFetch(url, options = {}) {
+// Test backend connectivity
+async function testBackendConnection() {
+    const apiUrl = getApiUrl();
     try {
-        // First try direct request
-        const response = await fetch(url, {
-            ...options,
-            mode: 'cors',
-            credentials: 'omit' // Remove credentials since Railway doesn't support it with *
-        });
-        return response;
-    } catch (error) {
-        if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-            console.warn('CORS error detected, this may be due to Railway backend configuration');
-            throw new Error('CORS_ERROR: Cannot connect to backend. Please check server configuration.');
+        console.log(`🔍 Testing backend connectivity to: ${apiUrl}`);
+        const response = await corsAwareFetch(`${apiUrl}/api/health`, { method: 'GET' }, 1);
+        
+        if (response.ok) {
+            const health = await response.json();
+            console.log('✅ Backend connection successful:', health);
+            return { success: true, data: health };
+        } else {
+            console.warn('⚠️ Backend responded with error:', response.status, response.statusText);
+            return { success: false, error: `Server error: ${response.status}` };
         }
-        throw error;
+    } catch (error) {
+        console.error('❌ Backend connection failed:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+// Display connection status to user
+function showConnectionStatus(status) {
+    const existingStatus = document.getElementById('connection-status');
+    if (existingStatus) existingStatus.remove();
+
+    const statusDiv = document.createElement('div');
+    statusDiv.id = 'connection-status';
+    statusDiv.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 10px 15px;
+        border-radius: 8px;
+        color: white;
+        font-weight: bold;
+        z-index: 1000;
+        font-family: Arial, sans-serif;
+        max-width: 300px;
+        font-size: 12px;
+        ${status.success ? 
+            'background: linear-gradient(45deg, #4CAF50, #45a049);' : 
+            'background: linear-gradient(45deg, #f44336, #d32f2f);'
+        }
+    `;
+    
+    if (status.success) {
+        statusDiv.innerHTML = `
+            ✅ Backend Connected<br>
+            <small>Version: ${status.data?.version || 'Unknown'}</small>
+        `;
+        setTimeout(() => statusDiv.remove(), 3000);
+    } else {
+        statusDiv.innerHTML = `
+            ❌ Backend Connection Failed<br>
+            <small>${status.error}</small><br>
+            <button onclick="location.reload()" style="margin-top: 5px; padding: 2px 8px; background: white; color: #f44336; border: none; border-radius: 3px; cursor: pointer;">Retry</button>
+        `;
+    }
+    
+    document.body.appendChild(statusDiv);
+}
+
+// Enhanced CORS-aware fetch function with retry logic
+async function corsAwareFetch(url, options = {}, retryCount = 2) {
+    const defaultOptions = {
+        mode: 'cors',
+        credentials: 'omit',
+        headers: {
+            'Content-Type': 'application/json',
+            ...options.headers
+        }
+    };
+
+    for (let attempt = 0; attempt <= retryCount; attempt++) {
+        try {
+            console.log(`🌐 Fetch attempt ${attempt + 1}/${retryCount + 1}: ${options.method || 'GET'} ${url}`);
+            
+            const response = await fetch(url, {
+                ...defaultOptions,
+                ...options
+            });
+
+            // Log response details for debugging
+            console.log(`📡 Response: ${response.status} ${response.statusText}`);
+            console.log(`🔗 CORS headers:`, {
+                'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods')
+            });
+
+            return response;
+
+        } catch (error) {
+            const isCorsError = error.message.includes('CORS') || 
+                               error.message.includes('Failed to fetch') ||
+                               error.message.includes('NetworkError') ||
+                               error.name === 'TypeError';
+
+            console.warn(`❌ Fetch attempt ${attempt + 1} failed:`, {
+                error: error.message,
+                isCorsError,
+                url,
+                attempt: attempt + 1
+            });
+
+            // If this is the last attempt, throw a descriptive error
+            if (attempt === retryCount) {
+                if (isCorsError) {
+                    const apiUrl = getApiUrl();
+                    throw new Error(`CORS_ERROR: Cannot connect to backend at ${apiUrl}. ` +
+                                  `This may be due to:\n` +
+                                  `• Railway backend not properly deployed\n` +
+                                  `• CORS headers not configured correctly\n` +
+                                  `• Network connectivity issues\n` +
+                                  `Original error: ${error.message}`);
+                }
+                throw error;
+            }
+
+            // Wait before retry (exponential backoff)
+            const delay = Math.pow(2, attempt) * 1000;
+            console.log(`⏳ Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
     }
 }
 
 // Check for existing session on page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 App initialized, checking backend connection...');
+    
+    // Test backend connectivity first
+    const connectionStatus = await testBackendConnection();
+    showConnectionStatus(connectionStatus);
+    
+    if (!connectionStatus.success) {
+        console.warn('⚠️ Backend not accessible, some features may not work');
+    }
+    
     const token = localStorage.getItem('authToken');
     const username = localStorage.getItem('username');
     
@@ -280,11 +398,8 @@ async function login() {
     }
     
     try {
-        const response = await fetch(`${getApiUrl()}/api/login`, {
+        const response = await corsAwareFetch(`${getApiUrl()}/api/login`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({ email, password })
         });
         
@@ -319,11 +434,8 @@ async function register() {
     }
     
     try {
-        const response = await fetch(`${getApiUrl()}/api/register`, {
+        const response = await corsAwareFetch(`${getApiUrl()}/api/register`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
             body: JSON.stringify({ username, email, password })
         });
         
