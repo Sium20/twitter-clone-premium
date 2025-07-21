@@ -444,7 +444,37 @@
 
     <script>
         const ADMIN_PASSWORD = 'admin123'; // Fixed admin password
-        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://twitterclone-production.up.railway.app';
+        
+        // Smart API base detection
+        const API_BASE = (() => {
+            const hostname = window.location.hostname;
+            const protocol = window.location.protocol;
+            const port = window.location.port;
+            
+            // If running from file:// protocol, default to localhost
+            if (protocol === 'file:') {
+                return 'http://localhost:3000';
+            }
+            
+            // If localhost with port, use localhost backend
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'http://localhost:3000';
+            }
+            
+            // If running on same server as backend, use same origin
+            if (port === '3000' || port === '') {
+                return `${protocol}//${hostname}${port ? ':' + port : ''}`;
+            }
+            
+            // Default production server
+            return 'https://twitterclone-production.up.railway.app';
+        })();
+
+        console.log('Admin Panel Configuration:', {
+            currentURL: window.location.href,
+            apiBase: API_BASE,
+            hostname: window.location.hostname
+        });
 
         let isAuthenticated = false;
 
@@ -485,31 +515,57 @@
             showNotification('Logged out successfully!');
         }
 
-        // API Helper
+        // API Helper with enhanced error handling
         async function apiCall(endpoint, method = 'GET', data = null) {
             try {
                 const options = {
                     method,
                     headers: {
                         'Content-Type': 'application/json',
-                    }
+                    },
+                    credentials: 'include' // Include cookies for CORS
                 };
                 
                 if (data) {
                     options.body = JSON.stringify(data);
                 }
                 
+                console.log(`API Call: ${method} ${API_BASE}${endpoint}`);
+                
                 const response = await fetch(`${API_BASE}${endpoint}`, options);
-                const result = await response.json();
                 
                 if (!response.ok) {
-                    throw new Error(result.error || 'API request failed');
+                    // Try to get error message from response
+                    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.error || errorData.message || errorMessage;
+                    } catch (e) {
+                        // If can't parse JSON, use status text
+                    }
+                    throw new Error(errorMessage);
                 }
                 
+                const result = await response.json();
+                console.log(`API Response: ${method} ${endpoint}`, result);
                 return result;
+                
             } catch (error) {
-                console.error('API Error:', error);
-                showNotification(error.message, 'error');
+                console.error('API Error:', {
+                    endpoint,
+                    method,
+                    error: error.message,
+                    apiBase: API_BASE
+                });
+                
+                // Enhanced error messages for common issues
+                if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    showNotification('Cannot connect to server. Please check if the backend is running.', 'error');
+                } else if (error.message.includes('CORS')) {
+                    showNotification('CORS error. Server configuration may need updating.', 'error');
+                } else {
+                    showNotification(error.message, 'error');
+                }
                 throw error;
             }
         }
