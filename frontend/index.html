@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Twitter Clone</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐦</text></svg>">
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header-logo">
+            <div class="logo-icon">🐦</div>
+            <h1>Twitter Clone</h1>
+        </div>
+        
+        <!-- Authentication Section -->
+        <div id="auth-section" class="auth-section">
+            <div class="auth-tabs">
+                <button class="tab-btn active" onclick="showLogin()">Login</button>
+                <button class="tab-btn" onclick="showRegister()">Register</button>
+            </div>
+            
+            <!-- Login Form -->
+            <div id="login-form" class="auth-form active">
+                <input type="text" id="login-email" placeholder="Email or Username">
+                <input type="password" id="login-password" placeholder="Password">
+                <button onclick="login()">Login</button>
+            </div>
+            
+            <!-- Register Form -->
+            <div id="register-form" class="auth-form">
+                <input type="text" id="register-username" placeholder="Username" maxlength="20">
+                <input type="email" id="register-email" placeholder="Email">
+                <input type="password" id="register-password" placeholder="Password">
+                <button onclick="register()">Register</button>
+            </div>
+        </div>
+        
+        <!-- Main App Section (hidden initially) -->
+        <div id="main-section" class="main-section">
+            <div class="user-info">
+                <span class="welcome-message">Welcome, <span id="current-user" class="username-display"></span></span>
+                <button onclick="logout()" class="logout-btn">Logout</button>
+            </div>
+            
+            <!-- Post Form -->
+            <div class="post-form">
+                <div class="post-form-header">
+                    <span class="compose-icon">✍️</span>
+                    <h3 class="compose-title">What's happening?</h3>
+                </div>
+                <div class="post-textarea-container">
+                    <textarea id="content" placeholder="Share your thoughts with the world..." maxlength="280"></textarea>
+                    <div class="character-counter">
+                        <span id="char-count">0</span>/280
+                    </div>
+                </div>
+                <div class="post-form-footer">
+                    <div class="post-options">
+                        <button class="option-btn" title="Add emoji">😊</button>
+                        <button class="option-btn" title="Add media">📷</button>
+                        <button class="option-btn" title="Add location">📍</button>
+                    </div>
+                    <button onclick="createPost()" class="post-btn">
+                        <span class="post-btn-icon">🚀</span>
+                        Post
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Posts Feed with Post Sidebar -->
+            <div class="posts-feed-container">
+                <div id="posts" class="posts-feed"></div>
+                
+                <!-- Post Sidebar Scrollbar -->
+                <div id="post-sidebar-scrollbar" class="post-sidebar-scrollbar">
+                    <div class="sidebar-scrollbar-track">
+                        <div id="sidebar-scrollbar-thumb" class="sidebar-scrollbar-thumb"></div>
+                    </div>
+                    <div class="sidebar-scroll-buttons">
+                        <button id="sidebar-scroll-up" class="sidebar-scroll-btn" title="Scroll Up">↑</button>
+                        <button id="sidebar-scroll-down" class="sidebar-scroll-btn" title="Scroll Down">↓</button>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>Developed by <span class="developer-name">Maksudur Sium</span></p>
+        </div>
+    </footer>
+    
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "name": "twitter-clone-fullstack",
+  "version": "1.0.0",
+  "description": "Twitter clone with Node.js backend and Firebase frontend",
+  "scripts": {
+    "start:backend": "cd backend && npm start",
+    "serve:frontend": "firebase serve --only hosting",
+    "deploy:frontend": "firebase deploy --only hosting",
+    "install:backend": "cd backend && npm install"
+  }
+}
