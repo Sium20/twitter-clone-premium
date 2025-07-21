@@ -12,5 +12,8 @@
     "setup:firebase": "firebase login && firebase init hosting",
     "setup:railway": "npm install -g @railway/cli && railway login",
     "setup:all": "npm run setup:firebase && npm run setup:railway"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
   }
 }
