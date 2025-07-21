@@ -109,14 +109,50 @@ function showConnectionStatus(status) {
             ❌ Backend Connection Failed<br>
             <small>${status.error}</small><br>
             ${status.suggestion ? `<small style="color: #2196F3;">💡 ${status.suggestion}</small><br>` : ''}
-            <button onclick="location.reload()" style="margin-top: 5px; padding: 2px 8px; background: white; color: #f44336; border: none; border-radius: 3px; cursor: pointer;">Retry</button>
+            <div style="display: flex; gap: 5px; margin-top: 5px;">
+                <button onclick="location.reload()" style="padding: 2px 8px; background: white; color: #f44336; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">Retry</button>
+                <button onclick="switchToLocalBackend()" style="padding: 2px 8px; background: white; color: #2196F3; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">Use Local</button>
+            </div>
         `;
     }
     
     document.body.appendChild(statusDiv);
 }
 
-// Enhanced CORS-aware fetch function with retry logic
+// Helper function to switch to local backend for testing
+function switchToLocalBackend() {
+    const confirmed = confirm(
+        '🔄 Switch to Local Backend?\n\n' +
+        'This will use http://localhost:3000 instead of Railway.\n' +
+        'Make sure your local backend server is running!\n\n' +
+        'Click OK to switch, or Cancel to stay with Railway.'
+    );
+    
+    if (confirmed) {
+        // Override CONFIG temporarily
+        if (typeof CONFIG !== 'undefined') {
+            CONFIG.API_BASE_URL = 'http://localhost:3000';
+        }
+        
+        // Store preference
+        localStorage.setItem('useLocalBackend', 'true');
+        
+        // Reload to test local connection
+        location.reload();
+    }
+}
+
+// Check for local backend preference
+function checkLocalBackendPreference() {
+    if (localStorage.getItem('useLocalBackend') === 'true') {
+        if (typeof CONFIG !== 'undefined') {
+            CONFIG.API_BASE_URL = 'http://localhost:3000';
+            console.log('🏠 Using local backend preference:', CONFIG.API_BASE_URL);
+        }
+    }
+}
+
+// Enhanced CORS-aware fetch function with Railway fallback
 async function corsAwareFetch(url, options = {}, retryCount = 2) {
     const defaultOptions = {
         mode: 'cors',
@@ -158,8 +194,38 @@ async function corsAwareFetch(url, options = {}, retryCount = 2) {
                 attempt: attempt + 1
             });
 
-            // If this is the last attempt, throw a descriptive error
-            if (attempt === retryCount) {
+            // If this is the last attempt, try Railway fallback for Railway URLs
+            if (attempt === retryCount && url.includes('railway.app') && isCorsError) {
+                console.log('🔄 Trying Railway fallback approach...');
+                try {
+                    // Try with different fetch options for Railway
+                    const fallbackResponse = await fetch(url, {
+                        ...defaultOptions,
+                        ...options,
+                        mode: 'no-cors' // This won't work for JSON but helps test connectivity
+                    });
+                    console.log('⚠️ Railway fallback response (no-cors mode):', fallbackResponse.status);
+                } catch (fallbackError) {
+                    console.warn('❌ Railway fallback also failed:', fallbackError.message);
+                }
+                
+                // Throw the original CORS error
+                const apiUrl = getApiUrl();
+                throw new Error(`CORS_ERROR: Cannot connect to backend at ${apiUrl}. ` +
+                              `This may be due to:\n` +
+                              `• Railway backend not properly deployed\n` +
+                              `• CORS headers not configured correctly\n` +
+                              `• Network connectivity issues\n` +
+                              `Original error: ${error.message}`);
+            }
+
+            // If not the last attempt, wait before retry (exponential backoff)
+            if (attempt < retryCount) {
+                const delay = Math.pow(2, attempt) * 1000;
+                console.log(`⏳ Retrying in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+                // Last attempt failed, throw error
                 if (isCorsError) {
                     const apiUrl = getApiUrl();
                     throw new Error(`CORS_ERROR: Cannot connect to backend at ${apiUrl}. ` +
@@ -171,11 +237,6 @@ async function corsAwareFetch(url, options = {}, retryCount = 2) {
                 }
                 throw error;
             }
-
-            // Wait before retry (exponential backoff)
-            const delay = Math.pow(2, attempt) * 1000;
-            console.log(`⏳ Retrying in ${delay}ms...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
 }
@@ -183,6 +244,9 @@ async function corsAwareFetch(url, options = {}, retryCount = 2) {
 // Check for existing session on page load
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 App initialized, checking backend connection...');
+    
+    // Check for local backend preference first
+    checkLocalBackendPreference();
     
     // Test backend connectivity first
     const connectionStatus = await testBackendConnection();
