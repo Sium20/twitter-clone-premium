@@ -466,6 +466,11 @@
                 return 'https://twitterclone-production-58f6.up.railway.app';
             }
             
+            // If running on Railway domain, use same origin (no CORS needed)
+            if (hostname.includes('.railway.app') || hostname.includes('railway')) {
+                return `${protocol}//${hostname}${port ? ':' + port : ''}`;
+            }
+            
             // If running on same server as backend, use same origin
             if (port === '3000' || port === '') {
                 return `${protocol}//${hostname}${port ? ':' + port : ''}`;
