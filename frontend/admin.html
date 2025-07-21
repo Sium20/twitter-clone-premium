@@ -461,13 +461,18 @@
                 return 'http://localhost:3000';
             }
             
+            // If running on Firebase hosting, use Railway backend
+            if (hostname.includes('.web.app') || hostname.includes('.firebaseapp.com')) {
+                return 'https://twitterclone-production-58f6.up.railway.app';
+            }
+            
             // If running on same server as backend, use same origin
             if (port === '3000' || port === '') {
                 return `${protocol}//${hostname}${port ? ':' + port : ''}`;
             }
             
             // Default production server
-            return 'https://twitterclone-production.up.railway.app';
+            return 'https://twitterclone-production-58f6.up.railway.app';
         })();
 
         console.log('Admin Panel Configuration:', {

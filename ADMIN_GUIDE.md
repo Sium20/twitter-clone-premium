@@ -1,7 +1,21 @@
 # Admin Panel Access
 
-## 🔐 Admin Panel
-Access the admin panel at: `frontend/admin.html`
+## 🔐 Admin Panel URLs
+
+### **🔥 LIVE ADMIN PANEL (Firebase + Railway):**
+```
+https://projectclone-3808d.web.app/admin.html
+```
+
+### **🚆 Railway Backend API:**
+```
+https://twitterclone-production-58f6.up.railway.app/api
+```
+
+### **Local Development:**
+```
+http://localhost:3000/admin.html
+```
 
 **Fixed Admin Password:** `admin123`
 
