@@ -10,6 +10,20 @@ let autoRefreshInterval = null;
 let lastPostCount = 0;
 let lastPostTimestamp = 0;
 
+// Helper function to safely get API URL
+function getApiUrl() {
+    if (typeof CONFIG === 'undefined') {
+        console.warn('CONFIG not loaded, using fallback API URL');
+        // Fallback API detection
+        const hostname = window.location.hostname;
+        if (hostname.includes('.web.app') || hostname.includes('.firebaseapp.com')) {
+            return 'https://twitterclone-production-58f6.up.railway.app';
+        }
+        return 'http://localhost:3000';
+    }
+    return CONFIG.API_BASE_URL;
+}
+
 // Check for existing session on page load
 document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('authToken');
@@ -65,7 +79,7 @@ function stopAutoRefresh() {
 async function checkForNewPosts() {
     try {
         // Get current posts count from server
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/posts`);
+        const response = await fetch(`${getApiUrl()}/api/posts`);
         if (!response.ok) return;
         
         const posts = await response.json();
@@ -247,7 +261,7 @@ async function login() {
     }
     
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/login`, {
+        const response = await fetch(`${getApiUrl()}/api/login`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -286,7 +300,7 @@ async function register() {
     }
     
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/register`, {
+        const response = await fetch(`${getApiUrl()}/api/register`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -365,7 +379,7 @@ async function createPost() {
         postBtn.disabled = true;
         postBtn.innerHTML = '<span class="post-btn-icon">⏳</span> Posting...';
         
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/posts`, {
+        const response = await fetch(`${getApiUrl()}/api/posts`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -522,7 +536,7 @@ function updateTimestamps() {
 
 async function loadPosts() {
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/posts`);
+        const response = await fetch(`${getApiUrl()}/api/posts`);
         const posts = await response.json();
         
         const postsContainer = document.getElementById('posts');
@@ -726,7 +740,7 @@ async function editPost(postId, currentContent) {
     }
     
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/posts/${postId}`, {
+        const response = await fetch(`${getApiUrl()}/api/posts/${postId}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -753,7 +767,7 @@ async function deletePost(postId) {
     }
     
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/posts/${postId}`, {
+        const response = await fetch(`${getApiUrl()}/api/posts/${postId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${authToken}`
