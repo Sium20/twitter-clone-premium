@@ -24,6 +24,25 @@ function getApiUrl() {
     return CONFIG.API_BASE_URL;
 }
 
+// CORS-aware fetch function
+async function corsAwareFetch(url, options = {}) {
+    try {
+        // First try direct request
+        const response = await fetch(url, {
+            ...options,
+            mode: 'cors',
+            credentials: 'omit' // Remove credentials since Railway doesn't support it with *
+        });
+        return response;
+    } catch (error) {
+        if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+            console.warn('CORS error detected, this may be due to Railway backend configuration');
+            throw new Error('CORS_ERROR: Cannot connect to backend. Please check server configuration.');
+        }
+        throw error;
+    }
+}
+
 // Check for existing session on page load
 document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('authToken');
@@ -79,7 +98,7 @@ function stopAutoRefresh() {
 async function checkForNewPosts() {
     try {
         // Get current posts count from server
-        const response = await fetch(`${getApiUrl()}/api/posts`);
+        const response = await corsAwareFetch(`${getApiUrl()}/api/posts`);
         if (!response.ok) return;
         
         const posts = await response.json();

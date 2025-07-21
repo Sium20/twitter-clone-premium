@@ -17,6 +17,7 @@ const CONFIG = (() => {
     }
     // If running on Firebase hosting, use Railway backend
     else if (hostname.includes('.web.app') || hostname.includes('.firebaseapp.com')) {
+        // Try direct connection first, then fallback to CORS proxy if needed
         API_BASE_URL = 'https://twitterclone-production-58f6.up.railway.app';
     }
     // If running on Railway domain, use same origin (no CORS needed)
