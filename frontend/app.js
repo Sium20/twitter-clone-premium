@@ -24,16 +24,33 @@ function getApiUrl() {
     return CONFIG.API_BASE_URL;
 }
 
-// Test backend connectivity
+// Test backend connectivity with enhanced CORS testing
 async function testBackendConnection() {
     const apiUrl = getApiUrl();
     try {
         console.log(`🔍 Testing backend connectivity to: ${apiUrl}`);
+        
+        // First test: Basic connectivity
         const response = await corsAwareFetch(`${apiUrl}/api/health`, { method: 'GET' }, 1);
         
         if (response.ok) {
             const health = await response.json();
             console.log('✅ Backend connection successful:', health);
+            
+            // Check for CORS headers
+            const corsOrigin = response.headers.get('Access-Control-Allow-Origin');
+            const corsMethods = response.headers.get('Access-Control-Allow-Methods');
+            
+            if (!corsOrigin) {
+                console.warn('⚠️ No CORS headers detected - this may cause issues');
+                return { 
+                    success: true, 
+                    data: health, 
+                    warning: 'CORS headers missing - some features may not work'
+                };
+            }
+            
+            console.log('🔗 CORS headers detected:', { corsOrigin, corsMethods });
             return { success: true, data: health };
         } else {
             console.warn('⚠️ Backend responded with error:', response.status, response.statusText);
@@ -41,6 +58,16 @@ async function testBackendConnection() {
         }
     } catch (error) {
         console.error('❌ Backend connection failed:', error.message);
+        
+        // Special handling for Railway deployment issues
+        if (error.message.includes('CORS_ERROR') && apiUrl.includes('railway.app')) {
+            return { 
+                success: false, 
+                error: `Railway backend deployment issue detected. ${error.message}`,
+                suggestion: 'Railway may be serving an older version. Try refreshing in a few minutes.'
+            };
+        }
+        
         return { success: false, error: error.message };
     }
 }
@@ -74,12 +101,14 @@ function showConnectionStatus(status) {
         statusDiv.innerHTML = `
             ✅ Backend Connected<br>
             <small>Version: ${status.data?.version || 'Unknown'}</small>
+            ${status.warning ? `<br><small style="color: #ff9800;">⚠️ ${status.warning}</small>` : ''}
         `;
-        setTimeout(() => statusDiv.remove(), 3000);
+        setTimeout(() => statusDiv.remove(), status.warning ? 5000 : 3000);
     } else {
         statusDiv.innerHTML = `
             ❌ Backend Connection Failed<br>
             <small>${status.error}</small><br>
+            ${status.suggestion ? `<small style="color: #2196F3;">💡 ${status.suggestion}</small><br>` : ''}
             <button onclick="location.reload()" style="margin-top: 5px; padding: 2px 8px; background: white; color: #f44336; border: none; border-radius: 3px; cursor: pointer;">Retry</button>
         `;
     }
