@@ -4,13 +4,54 @@
     box-sizing: border-box;
 }
 
+/* Enhanced mobile-first approach */
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
 body {
-    font-family: Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: #f5f5f5;
     color: #333;
+    min-height: -webkit-fill-available; /* iOS Safari fix */
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none; /* Prevent text selection on mobile */
+}
+
+/* Allow text selection for input areas */
+input, textarea, .post-content {
+    -webkit-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+/* PWA status bar padding for iOS */
+@supports(padding: max(0px)) {
+    body {
+        padding-top: max(0px, env(safe-area-inset-top));
+        padding-bottom: max(0px, env(safe-area-inset-bottom));
+        padding-left: max(0px, env(safe-area-inset-left));
+        padding-right: max(0px, env(safe-area-inset-right));
+    }
+}
+
+/* Enhanced touch targets for mobile */
+button, .tab-btn, .option-btn, .post-btn, .edit-btn, .delete-btn, .logout-btn, .refresh-btn {
+    min-height: 44px; /* iOS minimum touch target */
+    min-width: 44px;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 /* Loading Overlay */
@@ -67,9 +108,29 @@ body {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 40px 60px;
+    padding: 25px;
     background: linear-gradient(135deg, #f8fbff 0%, #ffffff 100%);
     flex: 1;
+    width: 100%;
+    position: relative;
+    min-height: 100vh;
+}
+
+/* Mobile-first container optimization */
+@media (max-width: 768px) {
+    .container {
+        padding: 18px 12px;
+        max-width: 100%;
+        background: #f8fbff;
+        min-height: calc(100vh - 20px);
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 15px 10px;
+        min-height: calc(100vh - 15px);
+    }
 }
 
 /* Header with Logo */
@@ -140,13 +201,18 @@ body {
     filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
 }
 
-/* Responsive Design */
+/* Enhanced Mobile Responsive Design - App-like Experience */
 @media (max-width: 768px) {
     .header-logo {
-        padding: 20px 15px;
-        gap: 12px;
-        border-radius: 15px;
+        padding: 25px 20px;
+        gap: 15px;
+        border-radius: 18px;
         margin-bottom: 25px;
+        background: linear-gradient(135deg, #1da1f2 0%, #0d8bd9 50%, #1991db 100%);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 6px 25px rgba(29, 161, 242, 0.3);
     }
     
     .logo-icon {
@@ -157,219 +223,275 @@ body {
         font-size: 24px;
     }
     
-    .container {
-        padding: 15px 20px;
-        max-width: 100%;
-    }
-    
     .auth-section {
-        padding: 25px 20px;
-        border-radius: 15px;
+        padding: 30px 25px;
+        border-radius: 18px;
         margin-bottom: 25px;
+        box-shadow: 0 8px 25px rgba(29, 161, 242, 0.15);
     }
     
     .tab-btn {
-        padding: 12px 16px;
-        font-size: 14px;
+        padding: 18px 25px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 14px;
+        min-height: 50px;
     }
     
     .auth-form input {
-        padding: 16px 20px;
+        padding: 20px 26px;
         font-size: 16px;
-        border-radius: 12px;
+        border-radius: 14px;
+        min-height: 54px;
+        border-width: 2px;
     }
     
     .auth-form button {
-        padding: 16px 25px;
+        padding: 20px 32px;
         font-size: 16px;
-        border-radius: 12px;
+        border-radius: 14px;
+        min-height: 54px;
+        font-weight: 600;
     }
     
     .posts-feed-container {
-        height: 450px;
-        gap: 15px;
+        height: 65vh; /* Increased height for better content display */
+        gap: 18px;
+        min-height: 350px; /* Increased minimum height */
+        padding: 5px 0; /* Added vertical padding */
     }
     
     .post-form {
-        padding: 20px 25px;
-        border-radius: 15px;
+        padding: 25px 22px;
+        border-radius: 18px;
         margin-bottom: 25px;
+        position: sticky;
+        top: 90px; /* Adjusted for better positioning */
+        z-index: 90;
+        background: rgba(255, 255, 255, 0.95);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 25px rgba(29, 161, 242, 0.2);
     }
     
     /* Post Form Mobile Responsive */
     .post-form-header {
         margin-bottom: 18px;
-        padding-bottom: 10px;
+        padding-bottom: 12px;
     }
     
     .compose-title {
-        font-size: 18px;
+        font-size: 19px;
     }
     
     .compose-icon {
-        font-size: 20px;
+        font-size: 22px;
     }
     
     .post-form textarea {
-        min-height: 120px;
-        padding: 18px 22px;
+        min-height: 120px; /* Increased height for better mobile experience */
+        padding: 20px 24px;
         font-size: 16px;
-        border-radius: 12px;
+        border-radius: 15px;
+        line-height: 1.6;
+        border: 2px solid rgba(29, 161, 242, 0.2);
     }
     
     .character-counter {
-        bottom: 12px;
-        right: 18px;
-        font-size: 12px;
-        padding: 4px 8px;
+        bottom: 15px;
+        right: 20px;
+        font-size: 13px;
+        padding: 6px 10px;
+        border-radius: 10px;
     }
     
     .post-form-footer {
-        flex-direction: column;
+        flex-direction: row; /* Keep horizontal on mobile */
         gap: 15px;
-        align-items: stretch;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 15px;
     }
     
     .post-options {
-        justify-content: center;
-        gap: 12px;
+        justify-content: flex-start;
+        gap: 10px;
     }
     
     .option-btn {
-        width: 38px;
-        height: 38px;
-        font-size: 16px;
+        width: 42px;
+        height: 42px;
+        font-size: 17px;
+        border-radius: 12px;
     }
     
     .post-btn {
-        padding: 14px 28px;
-        font-size: 16px;
-        align-self: center;
-        min-width: 140px;
-        border-radius: 20px;
+        padding: 14px 24px;
+        font-size: 15px;
+        min-width: 110px;
+        border-radius: 22px;
     }
     
     /* User Info Mobile Responsive */
     .user-info {
-        padding: 18px 22px;
-        border-radius: 15px;
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
-        text-align: center;
+        padding: 22px 25px;
+        border-radius: 18px;
+        flex-direction: row; /* Keep horizontal */
+        gap: 15px;
+        align-items: center;
+        justify-content: space-between;
         margin-bottom: 25px;
+        position: sticky;
+        top: 0;
+        z-index: 95;
+        background: rgba(255, 255, 255, 0.95);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
     
     .welcome-message {
         font-size: 17px;
-        justify-content: center;
+        justify-content: flex-start;
     }
     
     .username-display {
         font-size: 18px;
+        font-weight: 600;
     }
     
     .logout-btn {
-        padding: 10px 20px;
+        padding: 12px 20px;
         font-size: 14px;
-        align-self: center;
-        min-width: 120px;
-        border-radius: 12px;
+        min-width: 85px;
+        border-radius: 14px;
     }
     
     /* Posts Mobile Responsive */
     .post {
-        padding: 20px 22px;
+        padding: 22px 25px;
         margin-bottom: 18px;
-        border-radius: 15px;
+        border-radius: 18px;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(29, 161, 242, 0.1);
+    }
+    
+    .post:active {
+        transform: scale(0.98); /* Touch feedback */
     }
     
     .post-header {
-        margin-bottom: 12px;
+        margin-bottom: 15px;
         padding-bottom: 10px;
-        flex-direction: column;
-        gap: 12px;
-        align-items: flex-start;
+        flex-direction: row; /* Keep horizontal */
+        gap: 15px;
+        align-items: center;
     }
     
     .post-user-info {
-        width: 100%;
+        flex: 1;
     }
     
     .post-avatar {
-        width: 40px;
-        height: 40px;
-        font-size: 16px;
+        width: 42px;
+        height: 42px;
+        font-size: 17px;
     }
     
     .username {
-        font-size: 15px;
+        font-size: 16px;
+        font-weight: 600;
     }
     
     .timestamp {
         font-size: 13px;
         padding: 5px 10px;
-        border-radius: 12px;
-    }
-    
-    .post-actions {
-        gap: 8px;
-        width: 100%;
-        justify-content: flex-end;
-    }
-    
-    .edit-btn, .delete-btn {
-        padding: 6px 12px;
-        font-size: 12px;
         border-radius: 10px;
     }
     
+    .post-actions {
+        gap: 6px;
+        flex-shrink: 0;
+    }
+    
+    .edit-btn, .delete-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        border-radius: 8px;
+        min-height: 36px;
+    }
+    
     .post-content {
-        font-size: 15px;
-        padding: 15px 18px;
-        border-radius: 12px;
+        font-size: 16px;
+        padding: 18px 22px;
+        border-radius: 15px;
         margin-top: 12px;
+        line-height: 1.7;
+        background: rgba(248, 251, 255, 0.5);
+        border: 1px solid rgba(29, 161, 242, 0.1);
     }
     
     /* Edit Form Mobile */
     .edit-post-form {
-        padding: 15px;
-        border-radius: 12px;
-        margin-top: 12px;
+        padding: 18px;
+        border-radius: 15px;
+        margin-top: 15px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 2px solid rgba(29, 161, 242, 0.2);
     }
     
     .edit-post-form textarea {
-        min-height: 80px;
-        padding: 12px 16px;
-        font-size: 15px;
-        border-radius: 10px;
-        margin-bottom: 12px;
+        min-height: 90px;
+        padding: 15px 20px;
+        font-size: 16px;
+        border-radius: 12px;
+        margin-bottom: 15px;
+        border: 2px solid rgba(29, 161, 242, 0.2);
     }
     
     .edit-form-actions {
-        gap: 10px;
-        justify-content: center;
+        gap: 12px;
+        justify-content: flex-end;
     }
     
     .save-btn, .cancel-btn {
         padding: 8px 16px;
         font-size: 13px;
         border-radius: 8px;
-        flex: 1;
-        max-width: 100px;
+        min-width: 80px;
+    }
+    
+    /* Posts Header Mobile */
+    .posts-header {
+        padding: 20px 25px;
+        margin-bottom: 20px;
+        position: sticky;
+        top: 150px; /* Adjusted for better positioning below user info */
+        z-index: 85;
+        background: rgba(255, 255, 255, 0.95);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        border-radius: 18px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Adjust posts feed to account for sticky headers */
+    .posts-feed {
+        padding-top: 8px; /* Increased padding to prevent content from hiding behind sticky headers */
     }
 }
 
-/* Extra small screens */
+/* Extra small screens - Optimized for mobile app experience */
 @media (max-width: 480px) {
     .container {
-        padding: 10px 15px;
+        padding: 12px 8px;
     }
     
     .header-logo {
-        padding: 15px 12px;
-        gap: 10px;
+        padding: 20px 15px;
+        gap: 12px;
         margin-bottom: 20px;
+        border-radius: 15px;
     }
     
     .logo-icon {
@@ -381,45 +503,194 @@ body {
     }
     
     .auth-section {
-        padding: 20px 15px;
+        padding: 25px 18px;
         margin-bottom: 20px;
+        border-radius: 15px;
+    }
+    
+    .tab-btn {
+        padding: 16px 20px;
+        font-size: 15px;
+        min-height: 48px;
+        border-radius: 12px;
+    }
+    
+    .auth-form input {
+        padding: 18px 22px;
+        font-size: 16px;
+        min-height: 50px;
+    }
+    
+    .auth-form button {
+        padding: 16px 24px;
+        font-size: 16px;
+        min-height: 50px;
     }
     
     .post-form {
-        padding: 15px 18px;
-        margin-bottom: 20px;
+        padding: 15px 12px;
+        margin-bottom: 15px;
+        border-radius: 12px;
+        top: 60px; /* Adjusted for smaller header */
     }
     
-    .post {
-        padding: 15px 18px;
-        margin-bottom: 15px;
+    .post-form textarea {
+        min-height: 90px;
+        padding: 14px 16px;
+        font-size: 15px;
+    }
+    
+    .post-form-footer {
+        gap: 8px;
+    }
+    
+    .option-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .post-btn {
+        padding: 10px 16px;
+        font-size: 13px;
+        min-width: 90px;
     }
     
     .user-info {
-        padding: 15px 18px;
-        margin-bottom: 20px;
+        padding: 12px 15px;
+        margin-bottom: 15px;
+        border-radius: 12px;
+    }
+    
+    .welcome-message {
+        font-size: 14px;
+    }
+    
+    .username-display {
+        font-size: 15px;
+    }
+    
+    .logout-btn {
+        padding: 8px 12px;
+        font-size: 12px;
+        min-width: 70px;
     }
     
     .posts-feed-container {
-        height: 400px;
+        height: 55vh;
         gap: 10px;
+        min-height: 250px; /* Minimum height for smaller screens */
+    }
+    
+    .posts-header {
+        padding: 12px 15px;
+        margin-bottom: 12px;
+        top: 120px; /* Adjusted for smaller elements */
+    }
+    
+    .posts-title {
+        font-size: 16px;
+    }
+    
+    .refresh-btn {
+        padding: 8px 14px;
+        font-size: 12px;
+    }
+    
+    .post {
+        padding: 15px 12px;
+        margin-bottom: 12px;
+        border-radius: 12px;
     }
     
     .post-header {
-        gap: 10px;
+        gap: 8px;
+        margin-bottom: 10px;
+        padding-bottom: 6px;
+    }
+    
+    .post-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .username {
+        font-size: 14px;
+    }
+    
+    .timestamp {
+        font-size: 11px;
+        padding: 3px 6px;
     }
     
     .post-actions {
-        gap: 6px;
+        gap: 4px;
     }
     
     .edit-btn, .delete-btn {
-        padding: 5px 10px;
+        padding: 6px 10px;
         font-size: 11px;
+        min-height: 32px;
+        min-width: 60px;
     }
     
     .edit-btn span, .delete-btn span {
-        display: none;
+        display: inline; /* Show text on small screens for clarity */
+    }
+    
+    .post-content {
+        font-size: 14px;
+        padding: 12px 15px;
+        line-height: 1.5;
+    }
+    
+    .edit-post-form {
+        padding: 12px;
+    }
+    
+    .edit-post-form textarea {
+        min-height: 70px;
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+    
+    .save-btn, .cancel-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        min-width: 70px;
+    }
+}
+
+/* Ultra small screens (iPhone SE, etc.) */
+@media (max-width: 375px) {
+    .header-logo h1 {
+        font-size: 16px;
+    }
+    
+    .logo-icon {
+        font-size: 24px;
+    }
+    
+    .post-form {
+        top: 55px;
+    }
+    
+    .posts-header {
+        top: 110px;
+    }
+    
+    .posts-feed-container {
+        height: 50vh;
+        min-height: 200px; /* Minimum height for ultra small screens */
+    }
+    
+    .welcome-message {
+        font-size: 13px;
+    }
+    
+    .username-display {
+        font-size: 14px;
     }
 }
 
@@ -573,7 +844,14 @@ h1 {
 }
 
 .main-section.active {
-    display: block;
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* Ensure posts are always visible for everyone */
+#posts {
+    display: block !important;
+    visibility: visible !important;
 }
 
 .user-info {
@@ -1298,6 +1576,132 @@ h1 {
     box-shadow: 0 6px 16px rgba(108, 117, 125, 0.4);
 }
 
+/* Empty Posts State */
+.empty-posts-state {
+    text-align: center;
+    padding: 60px 40px;
+    color: #8899a6;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 50%, #ffffff 100%);
+    border-radius: 20px;
+    border: 2px dashed rgba(29, 161, 242, 0.2);
+    margin: 20px 0;
+    position: relative;
+    overflow: hidden;
+}
+
+.empty-posts-state::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #1da1f2, #0d8bd9, #1991db);
+    background-size: 200% 100%;
+    animation: gradientShift 3s ease infinite;
+}
+
+.empty-posts-icon {
+    font-size: 64px;
+    margin-bottom: 24px;
+    opacity: 0.8;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.empty-posts-title {
+    margin: 0 0 16px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #2c3e50;
+    background: linear-gradient(45deg, #1da1f2, #0d8bd9);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.empty-posts-description {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.6;
+    color: #7f8c8d;
+    font-weight: 400;
+}
+
+/* Mobile responsive empty state */
+@media (max-width: 768px) {
+    .empty-posts-state {
+        padding: 50px 30px;
+        margin: 20px 0;
+        border-radius: 18px;
+        border-width: 2px;
+    }
+    
+    .empty-posts-icon {
+        font-size: 56px;
+        margin-bottom: 24px;
+    }
+    
+    .empty-posts-title {
+        font-size: 22px;
+        margin-bottom: 15px;
+    }
+    
+    .empty-posts-description {
+        font-size: 17px;
+        line-height: 1.6;
+    }
+}
+
+@media (max-width: 480px) {
+    .empty-posts-state {
+        padding: 40px 25px;
+        margin: 18px 0;
+        border-radius: 15px;
+    }
+    
+    .empty-posts-icon {
+        font-size: 48px;
+        margin-bottom: 20px;
+    }
+    
+    .empty-posts-title {
+        font-size: 20px;
+        margin-bottom: 12px;
+    }
+    
+    .empty-posts-description {
+        font-size: 16px;
+        line-height: 1.5;
+    }
+}
+
+@media (max-width: 375px) {
+    .empty-posts-state {
+        padding: 35px 20px;
+        margin: 15px 0;
+    }
+    
+    .empty-posts-icon {
+        font-size: 44px;
+        margin-bottom: 18px;
+    }
+    
+    .empty-posts-title {
+        font-size: 18px;
+        margin-bottom: 10px;
+    }
+    
+    .empty-posts-description {
+        font-size: 15px;
+        line-height: 1.4;
+    }
+}
+
 /* Posts Feed with Sidebar Layout */
 .posts-feed-container {
     display: flex;
@@ -1312,6 +1716,8 @@ h1 {
     overflow-y: auto; /* Enable scrolling within posts container */
     overflow-x: hidden;
     padding-right: 10px;
+    /* Smooth scrolling behavior */
+    scroll-behavior: smooth;
     /* Hide default scrollbar */
     scrollbar-width: none; /* Firefox */
     -ms-overflow-style: none; /* Internet Explorer 10+ */
@@ -1612,6 +2018,92 @@ h1 {
     }
 }
 
+/* Mobile touch feedback and PWA styles */
+.touch-active {
+    transform: scale(0.95) !important;
+    opacity: 0.8 !important;
+}
+
+/* Pull to refresh animation */
+@keyframes slideDown {
+    from {
+        transform: translateX(-50%) translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
+/* PWA Install Banner */
+#install-banner {
+    animation: slideUpBanner 0.4s ease-out;
+}
+
+@keyframes slideUpBanner {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Enhanced mobile viewport support */
+@supports(height: 100dvh) {
+    .posts-feed-container {
+        height: calc(100dvh - 400px);
+    }
+}
+
+/* iOS Safari specific fixes */
+@supports(-webkit-touch-callout: none) {
+    body {
+        min-height: -webkit-fill-available;
+    }
+    
+    .container {
+        min-height: -webkit-fill-available;
+    }
+    
+    /* Fix for iOS Safari bottom bar */
+    @media (max-width: 768px) {
+        .posts-feed-container {
+            height: calc(var(--vh, 1vh) * 60);
+        }
+    }
+}
+
+/* Enhanced focus styles for mobile accessibility */
+input:focus, textarea:focus, button:focus {
+    outline: 3px solid rgba(29, 161, 242, 0.5);
+    outline-offset: 2px;
+}
+
+/* Better mobile scrollbars */
+@media (max-width: 768px) {
+    .posts-feed::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .posts-feed::-webkit-scrollbar-track {
+        background: rgba(29, 161, 242, 0.1);
+        border-radius: 3px;
+    }
+    
+    .posts-feed::-webkit-scrollbar-thumb {
+        background: rgba(29, 161, 242, 0.3);
+        border-radius: 3px;
+    }
+    
+    .posts-feed::-webkit-scrollbar-thumb:hover {
+        background: rgba(29, 161, 242, 0.5);
+    }
+}
+
 /* Mobile notification positioning */
 @media (max-width: 768px) {
     #new-posts-notification {
@@ -1651,5 +2143,45 @@ h1 {
     
     #new-posts-notification span:last-child {
         font-size: 11px !important;
+    }
+    
+    /* Enhanced mobile scrollbar for small screens */
+    .posts-feed::-webkit-scrollbar {
+        width: 4px;
+    }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+    .posts-feed-container {
+        height: calc(var(--vh, 1vh) * 50);
+    }
+    
+    .header-logo {
+        padding: 12px 15px;
+        margin-bottom: 15px;
+    }
+    
+    .post-form {
+        padding: 15px 18px;
+        top: 70px;
+    }
+    
+    .user-info {
+        padding: 12px 18px;
+    }
+    
+    .posts-header {
+        padding: 12px 18px;
+        top: 120px;
+    }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .header-logo::before,
+    .post-btn::before,
+    .auth-form button::before {
+        background-size: 100% 100%;
     }
 }

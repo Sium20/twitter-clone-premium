@@ -1,4 +1,4 @@
-// Configuration for different environments
+// Configuration
 const CONFIG = {
     production: {
         API_BASE_URL: 'https://twitterclone-production-58f6.up.railway.app',
@@ -10,14 +10,12 @@ const CONFIG = {
     }
 };
 
-// Detect environment - Always use production for Firebase deployment
 const currentConfig = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? CONFIG.development : CONFIG.production;
 const API_BASE_URL = currentConfig.API_BASE_URL;
 
 // Global state
 let currentUser = null;
 let currentToken = localStorage.getItem('token');
-let lastPostCount = 0;
 let autoReloadInterval = null;
 
 // Loading functions
@@ -25,8 +23,6 @@ function showLoading() {
     const loadingOverlay = document.getElementById('loading-overlay');
     if (loadingOverlay) {
         loadingOverlay.classList.add('active');
-        // Prevent scrolling when loading
-        document.body.style.overflow = 'hidden';
     }
 }
 
@@ -34,26 +30,29 @@ function hideLoading() {
     const loadingOverlay = document.getElementById('loading-overlay');
     if (loadingOverlay) {
         loadingOverlay.classList.remove('active');
-        // Restore scrolling
-        document.body.style.overflow = 'auto';
     }
 }
 
-// Initialize app
-document.addEventListener('DOMContentLoaded', function() {
-    // Show loading on initial page load
+// Initialize app - LOAD POSTS ONLY FOR AUTHENTICATED USERS
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('🚀 App starting...');
     showLoading();
     
-    // Check if user is already logged in
+    // Handle authentication first
     if (currentToken) {
-        loadProfile();
+        try {
+            await loadProfile(); // This will load posts for authenticated users
+        } catch (error) {
+            showLogin(); // No posts for guests
+        }
     } else {
-        hideLoading();
-        showLogin();
+        showLogin(); // No posts for guests
     }
+    
+    hideLoading();
 });
 
-// Authentication functions
+// API function
 async function apiCall(endpoint, options = {}) {
     const url = `${API_BASE_URL}/api${endpoint}`;
     const config = {
@@ -68,21 +67,28 @@ async function apiCall(endpoint, options = {}) {
         config.headers.Authorization = `Bearer ${currentToken}`;
     }
 
-    try {
-        const response = await fetch(url, config);
+    const response = await fetch(url, config);
+    
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
         
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: response.statusText }));
-            throw new Error(`HTTP ${response.status}: ${errorData.error || response.statusText}`);
+        if (response.status === 401) {
+            currentToken = null;
+            currentUser = null;
+            localStorage.removeItem('token');
+            
+            if (!endpoint.includes('/login') && !endpoint.includes('/register')) {
+                showLogin();
+            }
         }
         
-        return await response.json();
-    } catch (error) {
-        console.error('API call failed:', error);
-        throw error;
+        throw new Error(`HTTP ${response.status}: ${errorData.error || response.statusText}`);
     }
+    
+    return await response.json();
 }
 
+// Authentication functions
 async function register() {
     const username = document.getElementById('register-username').value;
     const email = document.getElementById('register-email').value;
@@ -105,7 +111,6 @@ async function register() {
         localStorage.setItem('token', currentToken);
         
         showMain();
-        await loadPosts();
         hideLoading();
     } catch (error) {
         hideLoading();
@@ -134,7 +139,6 @@ async function login() {
         localStorage.setItem('token', currentToken);
         
         showMain();
-        await loadPosts();
         hideLoading();
     } catch (error) {
         hideLoading();
@@ -156,30 +160,32 @@ async function logout() {
 }
 
 async function loadProfile() {
-    try {
-        const data = await apiCall('/profile');
-        currentUser = data.user;
-        showMain();
-        await loadPosts();
-        hideLoading();
-    } catch (error) {
-        console.error('Profile load failed:', error);
-        hideLoading();
-        logout();
-    }
+    const data = await apiCall('/profile');
+    currentUser = data.user;
+    showMain(); // This will load posts for authenticated users
 }
 
 // Post functions
 async function createPost() {
     const content = document.getElementById('content').value;
-    const postButton = document.querySelector('#post-form button');
+    const postButton = document.querySelector('.post-btn');
+    
+    if (!currentToken || !currentUser) {
+        alert('You need to be logged in to create posts.');
+        showLogin();
+        return;
+    }
     
     if (!content.trim()) {
         alert('Please enter some content');
         return;
     }
+    
+    if (content.length > 280) {
+        alert('Post is too long! Maximum 280 characters allowed.');
+        return;
+    }
 
-    // Show loading state on button
     const originalText = postButton.textContent;
     postButton.textContent = 'Posting...';
     postButton.disabled = true;
@@ -189,61 +195,61 @@ async function createPost() {
             method: 'POST',
             body: JSON.stringify({ content })
         });
-
+        
         document.getElementById('content').value = '';
-        loadPosts();
+        
+        // Reset character counter
+        const charCount = document.getElementById('char-count');
+        if (charCount) {
+            charCount.textContent = '0';
+            charCount.style.color = '#7f8c8d';
+        }
+        
+        // Reload posts to show new post
+        setTimeout(async () => {
+            await loadPosts();
+        }, 500);
+        
     } catch (error) {
         alert('Failed to create post: ' + error.message);
     } finally {
-        // Restore button state
         postButton.textContent = originalText;
         postButton.disabled = false;
     }
 }
 
-// Manual refresh function
-async function manualRefresh() {
-    const refreshBtn = document.querySelector('.refresh-btn');
-    const refreshIcon = document.querySelector('.refresh-icon');
-    
-    // Show loading state
-    showLoading();
-    refreshBtn.disabled = true;
-    refreshIcon.style.animation = 'spin 1s linear infinite';
-    
-    try {
-        await loadPosts();
-        
-        // Brief delay to show the loading effect
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-    } catch (error) {
-        console.error('Manual refresh failed:', error);
-        alert('Failed to refresh posts. Please try again.');
-    } finally {
-        // Hide loading and restore button state
-        hideLoading();
-        refreshBtn.disabled = false;
-        refreshIcon.style.animation = '';
-    }
-}
-
+// MAIN POSTS LOADING FUNCTION - WORKS FOR EVERYONE
 async function loadPosts() {
     try {
-        const posts = await apiCall('/posts');
+        console.log('📡 Loading posts from:', `${API_BASE_URL}/api/posts`);
+        
+        // Use direct fetch for public endpoint - NO AUTHENTICATION NEEDED
+        const response = await fetch(`${API_BASE_URL}/api/posts`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const posts = await response.json();
+        console.log('✅ Posts received:', posts.length);
+        
+        if (!Array.isArray(posts)) {
+            throw new Error('Invalid posts data format');
+        }
+        
         displayPosts(posts);
         
-        // Check for new posts and show notification
-        if (lastPostCount > 0 && posts.length > lastPostCount) {
-            showNewPostNotification(posts.length - lastPostCount);
-        }
-        lastPostCount = posts.length;
     } catch (error) {
-        console.error('Failed to load posts:', error);
-        document.getElementById('posts').innerHTML = '<p>Failed to load posts. Please try again.</p>';
+        console.error('❌ Failed to load posts:', error);
+        
+        const postsContainer = document.getElementById('posts');
+        if (postsContainer) {
+            postsContainer.innerHTML = '<div class="error-state"><h3>Failed to load posts</h3><p>' + error.message + '</p><button onclick="loadPosts()">Try Again</button></div>';
+        }
     }
 }
 
+// Edit and Delete functions
 async function deletePost(postId) {
     if (!confirm('Are you sure you want to delete this post?')) {
         return;
@@ -251,13 +257,22 @@ async function deletePost(postId) {
 
     try {
         await apiCall(`/posts/${postId}`, { method: 'DELETE' });
-        loadPosts();
+        
+        // Reload posts to show updated list
+        setTimeout(async () => {
+            await loadPosts();
+        }, 500);
+        
     } catch (error) {
         alert('Failed to delete post: ' + error.message);
     }
 }
 
 function editPost(postId, currentContent) {
+    // Pause auto-reload while editing
+    stopAutoReload();
+    console.log('⏸️ Auto-reload paused for editing');
+    
     // Hide the content and show the edit form
     document.getElementById(`content-${postId}`).style.display = 'none';
     document.getElementById(`edit-form-${postId}`).style.display = 'block';
@@ -276,6 +291,12 @@ function cancelEdit(postId) {
     // Reset textarea content to original
     const originalContent = document.getElementById(`content-${postId}`).textContent;
     document.getElementById(`edit-content-${postId}`).value = originalContent;
+    
+    // Resume auto-reload after cancelling edit
+    if (currentUser && currentToken) {
+        startAutoReload();
+        console.log('▶️ Auto-reload resumed after cancel');
+    }
 }
 
 async function savePost(postId) {
@@ -303,36 +324,44 @@ async function savePost(postId) {
         // Hide edit form and show content
         cancelEdit(postId);
         
-        // Optionally reload posts to get fresh data
-        loadPosts();
+        // Resume auto-reload after successful save
+        if (currentUser && currentToken) {
+            startAutoReload();
+            console.log('▶️ Auto-reload resumed after save');
+        }
+        
+        // Reload posts to show updates
+        setTimeout(async () => {
+            await loadPosts();
+        }, 500);
+        
     } catch (error) {
         alert('Failed to update post: ' + error.message);
     }
 }
 
-async function likePost(postId) {
-    try {
-        await apiCall(`/posts/${postId}/like`, { method: 'POST' });
-        loadPosts();
-    } catch (error) {
-        alert('Failed to like post: ' + error.message);
-    }
-}
-
+// DISPLAY POSTS FUNCTION
 function displayPosts(posts) {
+    console.log('🎨 Displaying posts:', posts.length);
     const postsContainer = document.getElementById('posts');
+    
+    if (!postsContainer) {
+        console.error('❌ Posts container not found!');
+        return;
+    }
     
     if (posts.length === 0) {
         postsContainer.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #8899a6; font-size: 18px;">
-                <div style="font-size: 48px; margin-bottom: 20px;">📝</div>
-                <p>No posts yet. Be the first to share something amazing!</p>
+            <div class="empty-posts-state">
+                <div class="empty-posts-icon">📝</div>
+                <h3 class="empty-posts-title">No posts yet</h3>
+                <p class="empty-posts-description">Be the first to share something amazing!</p>
             </div>
         `;
         return;
     }
 
-    postsContainer.innerHTML = posts.map(post => {
+    const postsHTML = posts.map(post => {
         const isOwnPost = currentUser && post.userId === currentUser.id;
         const postDate = new Date(post.createdAt).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -381,51 +410,109 @@ function displayPosts(posts) {
             </div>
         `;
     }).join('');
+    
+    postsContainer.innerHTML = postsHTML;
+    console.log('✅ Posts displayed successfully');
+    
+    // Initialize sidebar scrollbar after posts are displayed
+    initializeSidebarScrollbar();
 }
 
-// UI functions
+// UI functions - POSTS ONLY FOR LOGGED-IN USERS
 function showLogin() {
-    document.getElementById('auth-section').style.display = 'block';
-    document.getElementById('main-section').style.display = 'none';
-    document.getElementById('current-user').textContent = '';
+    console.log('🔑 Showing login - HIDING POSTS FOR GUEST USERS');
     
-    // Stop auto-reload when logged out
+    // Show auth section
+    document.getElementById('auth-section').style.display = 'block';
+    
+    // Hide main section completely for guest users
+    const mainSection = document.getElementById('main-section');
+    mainSection.classList.remove('active');
+    mainSection.style.display = 'none';
+    
+    // Clear posts container for guest users
+    const postsContainer = document.getElementById('posts');
+    if (postsContainer) {
+        postsContainer.innerHTML = '';
+    }
+    
     stopAutoReload();
 }
 
 function showMain() {
     document.getElementById('auth-section').style.display = 'none';
-    document.getElementById('main-section').style.display = 'block';
+    
+    // Show main section for authenticated users
+    const mainSection = document.getElementById('main-section');
+    mainSection.classList.add('active');
+    mainSection.style.display = 'block';
+    
+    // Show post creation form for authenticated users
+    const postForm = document.querySelector('.post-form');
+    if (postForm) {
+        postForm.style.display = 'block';
+    }
+    
+    // Show user info section for authenticated users
+    const userInfo = document.querySelector('.user-info');
+    if (userInfo) {
+        userInfo.style.display = 'flex';
+    }
     
     if (currentUser) {
         document.getElementById('current-user').textContent = currentUser.username;
     }
     
-    // Start auto-reload system
+    // Load posts for authenticated users only
+    loadPosts();
+    
+    setupCharacterCounter();
     startAutoReload();
 }
 
-// Auto-reload system functions
+// Character counter
+function setupCharacterCounter() {
+    const textarea = document.getElementById('content');
+    const charCount = document.getElementById('char-count');
+    
+    if (textarea && charCount) {
+        function updateCharCount() {
+            const count = textarea.value.length;
+            charCount.textContent = count;
+            
+            if (count > 280) {
+                charCount.style.color = '#e74c3c';
+                charCount.style.fontWeight = 'bold';
+            } else if (count > 250) {
+                charCount.style.color = '#f39c12';
+                charCount.style.fontWeight = '600';
+            } else {
+                charCount.style.color = '#7f8c8d';
+                charCount.style.fontWeight = '500';
+            }
+        }
+        
+        textarea.addEventListener('input', updateCharCount);
+        updateCharCount();
+    }
+}
+
+// Auto-reload system
 function startAutoReload() {
-    // Clear any existing interval
     if (autoReloadInterval) {
         clearInterval(autoReloadInterval);
     }
     
-    // Check for new posts every 5 seconds
     autoReloadInterval = setInterval(async () => {
         try {
-            const posts = await apiCall('/posts');
-            if (posts.length > lastPostCount) {
-                showNewPostNotification(posts.length - lastPostCount);
-                // Auto-reload posts
-                displayPosts(posts);
-                lastPostCount = posts.length;
-            }
+            await loadPosts();
         } catch (error) {
             console.error('Auto-reload failed:', error);
         }
-    }, 5000);
+    }, 5000); // Check every 5 seconds
+    
+    // Update UI to show auto-reload is active
+    updateAutoReloadStatus(true);
 }
 
 function stopAutoReload() {
@@ -433,91 +520,259 @@ function stopAutoReload() {
         clearInterval(autoReloadInterval);
         autoReloadInterval = null;
     }
+    
+    // Update UI to show auto-reload is paused
+    updateAutoReloadStatus(false);
 }
 
-function showNewPostNotification(newPostCount) {
-    // Remove existing notification if any
-    const existingNotification = document.getElementById('new-posts-notification');
-    if (existingNotification) {
-        existingNotification.remove();
-    }
-    
-    // Create notification
-    const notification = document.createElement('div');
-    notification.id = 'new-posts-notification';
-    notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: linear-gradient(135deg, #1da1f2, #0d8bd9);
-        color: white;
-        padding: 12px 20px;
-        border-radius: 25px;
-        box-shadow: 0 8px 25px rgba(29, 161, 242, 0.3);
-        z-index: 1000;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-    `;
-    
-    const plural = newPostCount > 1 ? 's' : '';
-    notification.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <span>🔄</span>
-            <span>${newPostCount} new post${plural} available</span>
-            <span style="font-size: 12px; opacity: 0.8;">• Click to refresh</span>
-        </div>
-    `;
-    
-    // Add click handler to refresh
-    notification.addEventListener('click', () => {
-        loadPosts();
-        notification.remove();
-    });
-    
-    // Add to page
-    document.body.appendChild(notification);
-    
-    // Auto-remove after 10 seconds
-    setTimeout(() => {
-        if (notification && notification.parentNode) {
-            notification.remove();
+// Update auto-reload status indicator
+function updateAutoReloadStatus(isActive) {
+    const refreshBtn = document.querySelector('.refresh-btn');
+    if (refreshBtn) {
+        if (isActive) {
+            refreshBtn.title = 'Auto-refresh active (5s) - Click to refresh now';
+            refreshBtn.style.opacity = '1';
+        } else {
+            refreshBtn.title = 'Auto-refresh paused - Click to refresh manually';
+            refreshBtn.style.opacity = '0.7';
         }
-    }, 10000);
+    }
 }
 
+// Manual refresh
+async function manualRefresh() {
+    const refreshBtn = document.querySelector('.refresh-btn');
+    const refreshIcon = document.querySelector('.refresh-icon');
+    
+    showLoading();
+    if (refreshBtn) refreshBtn.disabled = true;
+    if (refreshIcon) refreshIcon.style.animation = 'spin 1s linear infinite';
+    
+    try {
+        await loadPosts();
+        await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (error) {
+        console.error('Manual refresh failed:', error);
+        alert('Failed to refresh posts. Please try again.');
+    } finally {
+        hideLoading();
+        if (refreshBtn) refreshBtn.disabled = false;
+        if (refreshIcon) refreshIcon.style.animation = '';
+    }
+}
+
+// Tab switching
 function showRegister() {
-    // Hide login form and show register form
     document.getElementById('login-form').classList.remove('active');
     document.getElementById('register-form').classList.add('active');
     
-    // Update tab styling
     document.querySelector('.tab-btn.active').classList.remove('active');
     document.querySelectorAll('.tab-btn')[1].classList.add('active');
 }
 
 function showLoginForm() {
-    // Hide register form and show login form
     document.getElementById('register-form').classList.remove('active');
     document.getElementById('login-form').classList.add('active');
     
-    // Update tab styling
     document.querySelector('.tab-btn.active').classList.remove('active');
     document.querySelectorAll('.tab-btn')[0].classList.add('active');
 }
 
 // Enter key support
-document.addEventListener('keypress', function(e) {
+document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
-        if (e.target.id === 'content' || e.target.closest('.post-form')) {
-            e.preventDefault(); // Prevent default behavior
-            createPost();
-        } else if (e.target.closest('#login-form')) {
+        if (e.target.id === 'content') {
+            if (e.ctrlKey || !e.shiftKey) {
+                e.preventDefault();
+                const content = e.target.value.trim();
+                if (content) {
+                    createPost();
+                }
+            }
+        } else if (e.target.closest('#login-form') && !e.shiftKey) {
+            e.preventDefault();
             login();
-        } else if (e.target.closest('#register-form')) {
+        } else if (e.target.closest('#register-form') && !e.shiftKey) {
+            e.preventDefault();
             register();
         }
     }
 });
+
+// Debug functions
+window.testAPI = async function() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/posts`);
+        const data = await response.json();
+        console.log('✅ API Response:', data);
+        displayPosts(data);
+        return data;
+    } catch (error) {
+        console.error('❌ API Error:', error);
+        return error;
+    }
+};
+
+// Sidebar Scrollbar Functionality
+function initializeSidebarScrollbar() {
+    const postsContainer = document.querySelector('.posts-feed');
+    const sidebarScrollbar = document.getElementById('post-sidebar-scrollbar');
+    const scrollbarThumb = document.getElementById('sidebar-scrollbar-thumb');
+    const scrollUpBtn = document.getElementById('sidebar-scroll-up');
+    const scrollDownBtn = document.getElementById('sidebar-scroll-down');
+    const scrollbarTrack = document.querySelector('.sidebar-scrollbar-track');
+
+    if (!postsContainer || !sidebarScrollbar || !scrollbarThumb) {
+        console.log('📋 Sidebar elements not found, skipping initialization');
+        return;
+    }
+
+    let isDragging = false;
+    let dragStartY = 0;
+    let thumbStartY = 0;
+
+    // Function to update scrollbar position based on posts container scroll
+    function updateScrollbarPosition() {
+        const { scrollTop, scrollHeight, clientHeight } = postsContainer;
+        
+        if (scrollHeight <= clientHeight) {
+            // Hide sidebar if content doesn't overflow
+            sidebarScrollbar.classList.add('hidden');
+            return;
+        } else {
+            sidebarScrollbar.classList.remove('hidden');
+        }
+
+        const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+        const trackHeight = scrollbarTrack.clientHeight;
+        const thumbHeight = Math.max(30, (clientHeight / scrollHeight) * trackHeight);
+        const thumbPosition = scrollPercentage * (trackHeight - thumbHeight);
+
+        scrollbarThumb.style.height = `${thumbHeight}px`;
+        scrollbarThumb.style.top = `${thumbPosition}px`;
+
+        // Update scroll buttons state
+        scrollUpBtn.disabled = scrollTop <= 0;
+        scrollDownBtn.disabled = scrollTop >= scrollHeight - clientHeight;
+    }
+
+    // Function to scroll posts container based on thumb position
+    function scrollToThumbPosition(thumbY) {
+        const trackHeight = scrollbarTrack.clientHeight;
+        const thumbHeight = scrollbarThumb.clientHeight;
+        const maxThumbY = trackHeight - thumbHeight;
+        const clampedThumbY = Math.max(0, Math.min(maxThumbY, thumbY));
+        
+        const scrollPercentage = clampedThumbY / maxThumbY;
+        const maxScrollTop = postsContainer.scrollHeight - postsContainer.clientHeight;
+        const newScrollTop = scrollPercentage * maxScrollTop;
+        
+        postsContainer.scrollTop = newScrollTop;
+    }
+
+    // Event listeners for posts container scroll
+    postsContainer.addEventListener('scroll', updateScrollbarPosition);
+
+    // Thumb drag functionality
+    scrollbarThumb.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragStartY = e.clientY;
+        thumbStartY = scrollbarThumb.offsetTop;
+        scrollbarThumb.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        
+        const deltaY = e.clientY - dragStartY;
+        const newThumbY = thumbStartY + deltaY;
+        scrollToThumbPosition(newThumbY);
+        e.preventDefault();
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            scrollbarThumb.classList.remove('dragging');
+            document.body.style.userSelect = '';
+        }
+    });
+
+    // Track click functionality
+    scrollbarTrack.addEventListener('click', (e) => {
+        if (e.target === scrollbarThumb) return;
+        
+        const trackRect = scrollbarTrack.getBoundingClientRect();
+        const clickY = e.clientY - trackRect.top;
+        const thumbHeight = scrollbarThumb.clientHeight;
+        const newThumbY = clickY - thumbHeight / 2;
+        
+        scrollToThumbPosition(newThumbY);
+    });
+
+    // Scroll buttons functionality
+    scrollUpBtn.addEventListener('click', () => {
+        postsContainer.scrollBy({ top: -100, behavior: 'smooth' });
+    });
+
+    scrollDownBtn.addEventListener('click', () => {
+        postsContainer.scrollBy({ top: 100, behavior: 'smooth' });
+    });
+
+    // Touch support for mobile
+    let touchStartY = 0;
+    let thumbTouchStartY = 0;
+
+    scrollbarThumb.addEventListener('touchstart', (e) => {
+        isDragging = true;
+        touchStartY = e.touches[0].clientY;
+        thumbTouchStartY = scrollbarThumb.offsetTop;
+        scrollbarThumb.classList.add('dragging');
+        e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        
+        const deltaY = e.touches[0].clientY - touchStartY;
+        const newThumbY = thumbTouchStartY + deltaY;
+        scrollToThumbPosition(newThumbY);
+        e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => {
+        if (isDragging) {
+            isDragging = false;
+            scrollbarThumb.classList.remove('dragging');
+        }
+    });
+
+    // Keyboard navigation
+    postsContainer.addEventListener('keydown', (e) => {
+        switch(e.key) {
+            case 'ArrowUp':
+                postsContainer.scrollBy({ top: -50, behavior: 'smooth' });
+                e.preventDefault();
+                break;
+            case 'ArrowDown':
+                postsContainer.scrollBy({ top: 50, behavior: 'smooth' });
+                e.preventDefault();
+                break;
+            case 'Home':
+                postsContainer.scrollTo({ top: 0, behavior: 'smooth' });
+                e.preventDefault();
+                break;
+            case 'End':
+                postsContainer.scrollTo({ top: postsContainer.scrollHeight, behavior: 'smooth' });
+                e.preventDefault();
+                break;
+        }
+    });
+
+    // Initialize scrollbar position
+    updateScrollbarPosition();
+    
+    console.log('🎯 Sidebar scrollbar initialized successfully');
+}
