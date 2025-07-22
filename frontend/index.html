@@ -11,6 +11,14 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header-logo">
             <div class="logo-icon">🐦</div>
@@ -70,6 +78,15 @@
                         Post
                     </button>
                 </div>
+            </div>
+            
+            <!-- Posts Feed Header -->
+            <div class="posts-header">
+                <h3 class="posts-title">Latest Posts</h3>
+                <button onclick="manualRefresh()" class="refresh-btn" title="Refresh posts">
+                    <span class="refresh-icon">🔄</span>
+                    Refresh
+                </button>
             </div>
             
             <!-- Posts Feed with Post Sidebar -->
